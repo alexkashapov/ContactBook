@@ -1,9 +1,11 @@
 package contactbook.fake.contactbook;
 
 import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 
-import android.view.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,10 +24,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
     }
 
     public void addItems(List<Contact> contacts) {
-        for (Contact contact :
-                contacts) {
-            this.contacts.add(new Contact(contact));
-        }
+        this.contacts = contacts;
     }
 
     public Contact getContact(int position) {

@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">ContactBook</string>
     <string name="action_settings">Settings</string>
+    <string name="pd_title">Грузим контакты</string>
+    <string name="pd_message">Активно грузим</string>
+    <string name="smsButtonText">Send</string>
+    <string name="callButtonText">Call</string>
+    <string name="sendEmailButtonText">Send Email</string>
 </resources>

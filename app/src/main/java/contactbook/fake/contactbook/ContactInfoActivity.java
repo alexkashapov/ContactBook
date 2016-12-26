@@ -1,8 +1,12 @@
 package contactbook.fake.contactbook;
 
+import android.app.LoaderManager;
+import android.app.ProgressDialog;
+import android.content.AsyncTaskLoader;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.Intent;
+import android.content.Loader;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -13,11 +17,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.view.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,17 +31,21 @@ import java.io.InputStream;
  * Created by Fake on 13.12.2016.
  */
 
-public class ContactInfoActivity extends AppCompatActivity {
+public class ContactInfoActivity extends AppCompatActivity implements LoaderManager.LoaderCallbacks<Contact> {
 
     Contact contact;
+    LinearLayout infoContainer;
+    LinearLayout.LayoutParams params;
+    ProgressDialog progressDialog;
+    TextView contactName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.a_contact_info);
-        TextView contactName = (TextView) findViewById(R.id.label_name);
-        LinearLayout infoContainer = (LinearLayout) findViewById(R.id.linear);
-        LinearLayout.LayoutParams params =
+        contactName = (TextView) findViewById(R.id.label_name);
+        infoContainer = (LinearLayout) findViewById(R.id.linear);
+        params =
                 new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         params.setMargins(0, 10, 0, 10);
         contact = getIntent().getParcelableExtra(
@@ -77,8 +86,6 @@ public class ContactInfoActivity extends AppCompatActivity {
         setContactPhoto();
         this.getSupportActionBar().
                 setDisplayHomeAsUpEnabled(true);
-
-
     }
 
     private CardView initEmailCard(String email) {
@@ -89,8 +96,6 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         CardView card = new CardView(getApplicationContext());
 
-        //card.setCardBackgroundColor(Color.parseColor("#E6E6E6"));
-
         final TextView tv = new TextView(getApplicationContext());
         tv.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         tv.setText(email);
@@ -99,11 +104,9 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         cardLinear.addView(tv);
 
-        //card.addView(tv,0);
-
         Button sendEmailButton = new Button(getApplicationContext());
         sendEmailButton.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        sendEmailButton.setText("Send Email");
+        sendEmailButton.setText(R.string.sendEmailButtonText);
         sendEmailButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -159,8 +162,6 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         CardView card = new CardView(getApplicationContext());
 
-        //card.setCardBackgroundColor(Color.parseColor("#E6E6E6"));
-
         final TextView tv = new TextView(getApplicationContext());
         tv.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         tv.setText(phone);
@@ -169,11 +170,9 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         cardLinear.addView(tv);
 
-        //card.addView(tv,0);
-
         Button callButton = new Button(getApplicationContext());
         callButton.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        callButton.setText("Call");
+        callButton.setText(R.string.callButtonText);
         callButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -184,7 +183,7 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         Button sendSmsButton = new Button(getApplicationContext());
         sendSmsButton.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        sendSmsButton.setText("Send");
+        sendSmsButton.setText(R.string.smsButtonText);
         sendSmsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -205,7 +204,6 @@ public class ContactInfoActivity extends AppCompatActivity {
         card.setLayoutParams(params);
         card.setRadius(9);
         card.setContentPadding(15, 15, 15, 15);
-//        card.setBackgroundColor(Color.BLUE);
         card.setMaxCardElevation(15);
         card.setCardElevation(9);
 
@@ -216,6 +214,81 @@ public class ContactInfoActivity extends AppCompatActivity {
 
         card.addView(tv);
         return card;
+    }
+
+    @Override
+    public Loader<Contact> onCreateLoader(int id, Bundle args) {
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setTitle(getString(R.string.pd_title));
+        progressDialog.setMessage(getString(R.string.pd_message));
+        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
+        progressDialog.show();
+
+        AsyncTaskLoader<Contact> loader = null;
+        loader = new AsyncTaskLoader<Contact>(this) {
+            @Override
+            public Contact loadInBackground() {
+                ContactReader reader = new ContactReader(getContentResolver());
+                return reader.getContactInfo(contact.getId(), contact.getName());
+            }
+        };
+        return loader;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (getLoaderManager().getLoader(1) == null)
+            getLoaderManager().initLoader(1, null, this).forceLoad();
+        else getLoaderManager().getLoader(1).forceLoad();
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Contact> loader, Contact data) {
+        contact = data;
+        updateUI();
+        progressDialog.dismiss();
+
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Contact> loader) {
+        loader = null;
+    }
+
+    public void updateUI() {
+        contactName.setText(contact.getName());
+        infoContainer.removeAllViews();
+        if (contact.getNumbers().size() > 0) {
+            infoContainer.addView(createLabelCard("Phones:"), params);
+
+            for (int i = 0; i < contact.getNumbers().size(); i++) {
+                CardView card = initPhoneCard(contact.getNumbers().get(i));
+                card.setUseCompatPadding(true);
+                card.setLayoutParams(params);
+                card.setRadius(9);
+                card.setContentPadding(15, 15, 15, 15);
+                card.setBackgroundColor(Color.WHITE);
+                card.setMaxCardElevation(15);
+                card.setCardElevation(9);
+
+                infoContainer.addView(card, params);
+            }
+        }
+        if (contact.getEmails().size() > 0) {
+            infoContainer.addView(createLabelCard("Emails:"), params);
+            for (int i = 0; i < contact.getEmails().size(); i++) {
+                CardView card = initEmailCard(contact.getEmails().get(i));
+                card.setUseCompatPadding(true);
+                card.setLayoutParams(params);
+                card.setRadius(9);
+                card.setContentPadding(15, 15, 15, 15);
+                card.setBackgroundColor(Color.WHITE);
+                card.setMaxCardElevation(15);
+                card.setCardElevation(9);
+                infoContainer.addView(card, params);
+            }
+        }
     }
 }
 
